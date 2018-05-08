@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<persons>
+    <person>
+        <birthday>1988-01-01</birthday>
+        <city>Введите название города...</city>
+        <firstName>Enter name...</firstName>
+        <lastName>Enter surname...</lastName>
+        <postalCode>111111</postalCode>
+        <street>Введите название улицы...</street>
+    </person>
+    <person>
+        <birthday>1988-02-13</birthday>
+        <city>TestCity</city>
+        <firstName>Leo</firstName>
+        <lastName>Kooper</lastName>
+        <postalCode>123456</postalCode>
+        <street>Test st.</street>
+    </person>
+</persons>
