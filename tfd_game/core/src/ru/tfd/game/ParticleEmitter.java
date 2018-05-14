@@ -6,11 +6,17 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Pool;
 
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Pool;
+
 public class ParticleEmitter extends ObjectPool<Particle> {
     private TextureRegion oneParticle;
 
-    public ParticleEmitter(TextureRegion oneParticle) {
-        this.oneParticle = oneParticle;
+    public ParticleEmitter() {
+        this.oneParticle = Assets.getInstance().getAtlas().findRegion("star16");
     }
 
     @Override

@@ -15,6 +15,12 @@ import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import ru.tfd.game.gui.UpperPanel;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+
 public class GameScreen implements Screen {
     private SpriteBatch batch;
     private BitmapFont font24;
@@ -22,7 +28,6 @@ public class GameScreen implements Screen {
     private TurretEmitter turretEmitter;
     private MonsterEmitter monsterEmitter;
     private ParticleEmitter particleEmitter;
-    private TextureAtlas atlas;
     private TextureRegion selectedCellTexture;
     private Stage stage;
     private Group groupTurretAction;
@@ -55,13 +60,12 @@ public class GameScreen implements Screen {
     @Override
     public void show() {
         Gdx.input.setInputProcessor(null);
-        atlas = Assets.getInstance().getAtlas();
-        selectedCellTexture = atlas.findRegion("cursor");
-        map = new Map(atlas);
+        selectedCellTexture = Assets.getInstance().getAtlas().findRegion("cursor");
+        map = new Map();
         font24 = Assets.getInstance().getAssetManager().get("zorque24.ttf", BitmapFont.class);
-        turretEmitter = new TurretEmitter(atlas, this, map);
-        monsterEmitter = new MonsterEmitter(atlas, map, 60);
-        particleEmitter = new ParticleEmitter(atlas.findRegion("star16"));
+        turretEmitter = new TurretEmitter(this, map);
+        monsterEmitter = new MonsterEmitter(map, 60);
+        particleEmitter = new ParticleEmitter();
         mousePosition = new Vector2(0, 0);
         playerInfo = new PlayerInfo(100, 32);
         createGUI();
@@ -73,6 +77,10 @@ public class GameScreen implements Screen {
         InputProcessor myProc = new InputAdapter() {
             @Override
             public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+                camera.position.set(640 + 160, 360, 0);
+                camera.update();
+                mousePosition.set(screenX, screenY);
+                ScreenManager.getInstance().getViewport().unproject(mousePosition);
                 selectedCellX = (int) (mousePosition.x / 80);
                 selectedCellY = (int) (mousePosition.y / 80);
                 return true;
@@ -104,7 +112,6 @@ public class GameScreen implements Screen {
         groupTurretAction.addActor(btnUpgradeTurret);
         groupTurretAction.addActor(btnDestroyTurret);
 
-
         groupTurretSelection = new Group();
         groupTurretSelection.setVisible(false);
         groupTurretSelection.setPosition(50, 500);
@@ -127,6 +134,18 @@ public class GameScreen implements Screen {
                 setTurret(1);
             }
         });
+        btnDestroyTurret.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                turretEmitter.destroyTurret(selectedCellX, selectedCellY);
+            }
+        });
+        btnUpgradeTurret.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                turretEmitter.upgradeTurret(playerInfo, selectedCellX, selectedCellY);
+            }
+        });
 
         stage.addActor(groupTurretSelection);
         stage.addActor(groupTurretAction);
@@ -142,10 +161,10 @@ public class GameScreen implements Screen {
         skin.dispose();
     }
 
-    public void setTurret(int index) {
-        if (playerInfo.isMoneyEnough(turretEmitter.getTurretCost(index))) {
-            playerInfo.decreaseMoney(turretEmitter.getTurretCost(index));
-            turretEmitter.setTurret(index, selectedCellX, selectedCellY);
+    public void setTurret(int turretId) {
+        if (playerInfo.isMoneyEnough(turretEmitter.getTurretCost(turretId, 1))) {
+            playerInfo.decreaseMoney(turretEmitter.getTurretCost(turretId, 1));
+            turretEmitter.setTurret(turretId, selectedCellX, selectedCellY);
         }
         groupTurretSelection.setVisible(false);
     }
@@ -171,22 +190,24 @@ public class GameScreen implements Screen {
         camera.update();
         batch.setProjectionMatrix(camera.combined);
         stage.draw();
-
     }
 
     public void update(float dt) {
-        camera.position.set(640 + 160, 360, 0);
-        camera.update();
-        ScreenManager.getInstance().getViewport().apply();
-        mousePosition.set(Gdx.input.getX(), Gdx.input.getY());
-        ScreenManager.getInstance().getViewport().unproject(mousePosition);
         monsterEmitter.update(dt);
         turretEmitter.update(dt);
         particleEmitter.update(dt);
         particleEmitter.checkPool();
         checkMonstersAtHome();
+        camera.position.set(640, 360, 0);
+        camera.update();
         upperPanel.update();
         stage.act(dt);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F4)) {
+            saveGame();
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F6)) {
+            loadGame();
+        }
     }
 
     public void checkMonstersAtHome() {
@@ -198,6 +219,36 @@ public class GameScreen implements Screen {
                     playerInfo.decreaseHp(1);
                 }
             }
+        }
+    }
+
+    public void saveGame() {
+        try {
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(Gdx.files.local("mydata.sav").file()));
+            oos.writeObject(playerInfo);
+            oos.writeObject(turretEmitter);
+            oos.writeObject(map);
+            oos.writeObject(monsterEmitter);
+            oos.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void loadGame() {
+        try {
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(Gdx.files.local("mydata.sav").file()));
+            playerInfo = (PlayerInfo) ois.readObject();
+            turretEmitter = (TurretEmitter) ois.readObject();
+            map = (Map) ois.readObject();
+            monsterEmitter = (MonsterEmitter) ois.readObject();
+            upperPanel.setPlayerInfo(playerInfo);
+            ois.close();
+            map.reload();
+            turretEmitter.reload(this);
+            monsterEmitter.reload();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
